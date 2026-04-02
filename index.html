@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyVault | Ultimate Personal Cloud</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --sidebar: rgba(30, 41, 59, 0.7);
+            --card: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; }
+        .hidden { display: none !important; }
+
+        /* --- LOGIN SCREEN --- */
+        #auth-screen {
+            position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(circle at top left, #1e1b4b, #0f172a); z-index: 2000;
+        }
+        .login-card {
+            background: var(--card); backdrop-filter: blur(20px); padding: 3rem;
+            border-radius: 24px; border: 1px solid var(--border); text-align: center; width: 90%; max-width: 400px;
+        }
+        .btn-google {
+            background: white; color: black; border: none; padding: 14px 24px; border-radius: 12px;
+            font-weight: 600; display: flex; align-items: center; gap: 12px; width: 100%;
+            justify-content: center; cursor: pointer; transition: 0.3s; margin-top: 2rem;
+        }
+
+        /* --- DASHBOARD LAYOUT --- */
+        #app-shell { display: grid; grid-template-columns: 260px 1fr; height: 100vh; }
+        
+        aside {
+            background: var(--sidebar); backdrop-filter: blur(10px);
+            border-right: 1px solid var(--border); padding: 2rem 1.5rem;
+            display: flex; flex-direction: column;
+        }
+
+        .logo { font-size: 1.5rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; margin-bottom: 3rem; }
+        
+        nav ul { list-style: none; }
+        nav li {
+            padding: 12px 16px; border-radius: 12px; margin-bottom: 8px; cursor: pointer;
+            display: flex; align-items: center; gap: 12px; color: var(--text-dim); transition: 0.3s;
+        }
+        nav li.active, nav li:hover { background: var(--primary); color: white; }
+
+        main { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+        header {
+            padding: 1.5rem 2rem; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .content-area { padding: 2rem; overflow-y: auto; flex-grow: 1; }
+
+        /* --- GRID & CARDS --- */
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
+        .media-card { aspect-ratio: 1; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: #1e293b; cursor: pointer; }
+        .media-card img { width: 100%; height: 100%; object-fit: cover; }
+
+        .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+        .note-card { background: var(--card); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border); }
+        .note-card h3 { margin-bottom: 0.5rem; font-size: 1.1rem; }
+        .note-card p { color: var(--text-dim); font-size: 0.9rem; }
+
+        /* Floating Action Button */
+        .fab {
+            position: fixed; bottom: 30px; right: 30px; background: var(--primary);
+            color: white; width: 56px; height: 56px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: pointer; border: none;
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            #app-shell { grid-template-columns: 1fr; }
+            aside { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AUTH SCREEN -->
+    <div id="auth-screen">
+        <div class="login-card">
+            <h1>MyVault</h1>
+            <p style="color: var(--text-dim); margin-top: 10px;">Your private cloud dashboard</p>
+            <button class="btn-google" onclick="handleAuthClick()">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18">
+                Sign in with Google
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app-shell" class="hidden">
+        <aside>
+            <div class="logo"><i data-lucide="shield-check"></i> MyVault</div>
+            <nav>
+                <ul>
+                    <li class="active" onclick="showSection('drive')"><i data-lucide="hard-drive"></i> G-Drive Photos</li>
+                    <li onclick="showSection('photos')"><i data-lucide="image"></i> Google Photos</li>
+                    <li onclick="showSection('notes')"><i data-lucide="file-text"></i> My Notes</li>
+                    <li onclick="showSection('settings')"><i data-lucide="settings"></i> Settings</li>
+                </ul>
+            </nav>
+            <button onclick="logout()" style="margin-top:auto; background:none; border:none; color:#ef4444; cursor:pointer; display:flex; gap:10px; align-items:center;">
+                <i data-lucide="log-out"></i> Logout
+            </button>
+        </aside>
+
+        <main>
+            <header>
+                <h2 id="section-title">Google Drive Photos</h2>
+                <div id="user-info" style="font-size: 0.8rem; color: var(--text-dim);"></div>
+            </header>
+
+            <div class="content-area" id="main-content">
+                <!-- Data will load here -->
+            </div>
+        </main>
+    </div>
+
+    <button id="add-note-btn" class="fab hidden" onclick="addNewNote()"><i data-lucide="plus"></i></button>
+
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+
+    <script>
+        const CLIENT_ID = '660229678534-o10ad3hp1tini145rb5q88ugp0v804ak.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyC3W_BY2TEvFTC6hcVVGpoAHaDkh7tAEX0';
+        // ড্রাইভ এবং গুগল ফটোস দুইটার পারমিশনই নেওয়া হচ্ছে
+        const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/photoslibrary.readonly';
+
+        let tokenClient;
+        let accessToken = localStorage.getItem('vault_access_token');
+
+        // ১. শুরুতেই চেক করা হবে ইউজার লগইন করা কি না
+        function initApp() {
+            gapi.load('client', async () => {
+                await gapi.client.init({ apiKey: API_KEY, discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] });
+                
+                if (accessToken) {
+                    gapi.client.setToken({ access_token: accessToken });
+                    renderDashboard();
+                }
+            });
+
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (resp) => {
+                    if (resp.access_token) {
+                        accessToken = resp.access_token;
+                        localStorage.setItem('vault_access_token', accessToken);
+                        renderDashboard();
+                    }
+                },
+            });
+            lucide.createIcons();
+        }
+
+        function handleAuthClick() {
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        }
+
+        function logout() {
+            localStorage.removeItem('vault_access_token');
+            location.reload();
+        }
+
+        function renderDashboard() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-shell').classList.remove('hidden');
+            showSection('drive');
+        }
+
+        async function showSection(section) {
+            const container = document.getElementById('main-content');
+            const title = document.getElementById('section-title');
+            const fab = document.getElementById('add-note-btn');
+            
+            // সাইডবার একটিভ স্টেট
+            document.querySelectorAll('nav li').forEach(li => li.classList.remove('active'));
+            event?.currentTarget?.classList?.add('active');
+
+            container.innerHTML = '<p>Loading...</p>';
+            fab.classList.add('hidden');
+
+            if (section === 'drive') {
+                title.innerText = "Google Drive Photos";
+                await loadDriveFiles();
+            } else if (section === 'photos') {
+                title.innerText = "Google Photos Library";
+                await loadGooglePhotos();
+            } else if (section === 'notes') {
+                title.innerText = "My Notes";
+                fab.classList.remove('hidden');
+                loadNotes();
+            }
+            lucide.createIcons();
+        }
+
+        // --- GOOGLE DRIVE LOGIC ---
+        async function loadDriveFiles() {
+            try {
+                const res = await gapi.client.drive.files.list({
+                    q: "mimeType contains 'image/'",
+                    fields: 'files(id, name, thumbnailLink, webViewLink)'
+                });
+                renderGallery(res.result.files);
+            } catch (e) { logout(); }
+        }
+
+        // --- GOOGLE PHOTOS LOGIC ---
+        async function loadGooglePhotos() {
+            const container = document.getElementById('main-content');
+            try {
+                const res = await fetch('https://photoslibrary.googleapis.com/v1/mediaItems', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const data = await res.json();
+                if (data.mediaItems) {
+                    renderGallery(data.mediaItems.map(i => ({ thumbnailLink: i.baseUrl, webViewLink: i.productUrl })));
+                } else {
+                    container.innerHTML = "<p>No photos found or API not enabled.</p>";
+                }
+            } catch (e) { container.innerHTML = "<p>Error loading Google Photos.</p>"; }
+        }
+
+        function renderGallery(items) {
+            const container = document.getElementById('main-content');
+            if (!items || items.length === 0) { container.innerHTML = "No photos found."; return; }
+            
+            container.innerHTML = `<div class="gallery-grid">` + items.map(item => `
+                <div class="media-card" onclick="window.open('${item.webViewLink}')">
+                    <img src="${item.thumbnailLink.replace('=s220', '=s500')}" loading="lazy">
+                </div>
+            `).join('') + `</div>`;
+        }
+
+        // --- NOTES LOGIC ---
+        function loadNotes() {
+            const container = document.getElementById('main-content');
+            const notes = JSON.parse(localStorage.getItem('vault_notes') || '[]');
+            
+            if (notes.length === 0) { container.innerHTML = "No notes yet. Click + to add one."; return; }
+
+            container.innerHTML = `<div class="notes-grid">` + notes.map((n, i) => `
+                <div class="note-card">
+                    <h3>${n.title}</h3>
+                    <p>${n.body}</p>
+                    <button onclick="deleteNote(${i})" style="margin-top:10px; color:#ef4444; border:none; background:none; cursor:pointer;">Delete</button>
+                </div>
+            `).join('') + `</div>`;
+        }
+
+        function addNewNote() {
+            const title = prompt("Note Title:");
+            const body = prompt("Note Content:");
+            if (title && body) {
+                const notes = JSON.parse(localStorage.getItem('vault_notes') || '[]');
+                notes.push({ title, body });
+                localStorage.setItem('vault_notes', JSON.stringify(notes));
+                loadNotes();
+            }
+        }
+
+        function deleteNote(index) {
+            const notes = JSON.parse(localStorage.getItem('vault_notes') || '[]');
+            notes.splice(index, 1);
+            localStorage.setItem('vault_notes', JSON.stringify(notes));
+            loadNotes();
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
