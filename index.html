@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyVault | Private Google Drive Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-dark: #0f172a;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* --- LOGIN PAGE --- */
+        #auth-screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at top left, #1e1b4b, #0f172a);
+            z-index: 1000;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            padding: 3rem;
+            border-radius: 24px;
+            border: 1px solid var(--glass-border);
+            text-align: center;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+
+        .btn-google {
+            background: white;
+            color: #000;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 2rem;
+        }
+
+        .btn-google:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(255,255,255,0.1); }
+
+        /* --- DASHBOARD LAYOUT --- */
+        #app-shell {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            height: 100vh;
+        }
+
+        aside {
+            background: var(--glass);
+            border-right: 1px solid var(--glass-border);
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo { font-size: 1.5rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; margin-bottom: 3rem; }
+
+        nav ul { list-style: none; }
+        nav li {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-dim);
+            transition: var(--transition);
+        }
+
+        nav li.active, nav li:hover { background: var(--primary); color: white; }
+
+        main { padding: 2rem; overflow-y: auto; position: relative; }
+
+        /* --- GALLERY GRID --- */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .media-card {
+            background: var(--glass);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            aspect-ratio: 1;
+        }
+
+        .media-card:hover { transform: scale(1.03); border-color: var(--primary); }
+
+        .media-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #1e293b;
+        }
+
+        .media-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            font-size: 0.75rem;
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        .media-card:hover .media-info { opacity: 1; }
+
+        .hidden { display: none !important; }
+
+        /* Loader */
+        .loader-container { text-align: center; padding: 3rem; }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid var(--glass);
+            border-top: 4px solid var(--primary); border-radius: 50%;
+            animation: spin 1s linear infinite; margin: 0 auto 1rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN SCREEN -->
+    <div id="auth-screen">
+        <div class="login-card">
+            <div style="color: var(--primary); margin-bottom: 1rem;"><i data-lucide="shield-lock" size="48"></i></div>
+            <h1>MyVault</h1>
+            <p style="color: var(--text-dim); margin-top: 0.5rem;">Connect your Google Drive to access your private photos.</p>
+            
+            <button class="btn-google" id="btn-login">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="20">
+                Sign in with Google
+            </button>
+            <p style="font-size: 0.7rem; color: #64748b; margin-top: 2rem;">Authorized access only.</p>
+        </div>
+    </div>
+
+    <!-- MAIN APP DASHBOARD -->
+    <div id="app-shell" class="hidden">
+        <aside>
+            <div class="logo"><i data-lucide="hard-drive"></i> MyVault</div>
+            <nav>
+                <ul>
+                    <li class="active"><i data-lucide="image"></i> All Photos</li>
+                    <li><i data-lucide="folder"></i> Folders</li>
+                    <li><i data-lucide="star"></i> Favorites</li>
+                    <li><i data-lucide="settings"></i> Settings</li>
+                </ul>
+            </nav>
+            <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
+                <button id="btn-logout" style="background:none; border:none; color:#ef4444; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                    <i data-lucide="log-out" size="18"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <main>
+            <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
+                <div>
+                    <h2 id="view-title">Google Drive Photos</h2>
+                    <p style="color: var(--text-dim); font-size: 0.9rem;">Total images found in your drive</p>
+                </div>
+                <button onclick="loadDriveImages()" style="background:var(--glass); border:1px solid var(--glass-border); color:white; padding:10px; border-radius:10px; cursor:pointer;">
+                    <i data-lucide="refresh-cw" size="20"></i>
+                </button>
+            </header>
+
+            <div id="loader" class="loader-container hidden">
+                <div class="spinner"></div>
+                <p>Accessing Google Drive...</p>
+            </div>
+
+            <div id="gallery" class="gallery-grid">
+                <!-- Images will load here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+
+    <script>
+        // আপনার দেওয়া ক্রিডেনশিয়ালস
+        const CLIENT_ID = '660229678534-o10ad3hp1tini145rb5q88ugp0v804ak.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyC3W_BY2TEvFTC6hcVVGpoAHaDkh7tAEX0';
+        
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+
+        // Initialize GAPI
+        function gapiLoaded() {
+            gapi.load('client', async () => {
+                await gapi.client.init({
+                    apiKey: API_KEY,
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+                gapiInited = true;
+                maybeShowApp();
+            });
+        }
+
+        // Initialize Google Identity Services
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: async (resp) => {
+                    if (resp.error) return;
+                    localStorage.setItem('vault_token', resp.access_token);
+                    await startApp();
+                },
+            });
+            gisInited = true;
+            maybeShowApp();
+        }
+
+        async function maybeShowApp() {
+            const token = localStorage.getItem('vault_token');
+            if (token) {
+                gapi.client.setToken({ access_token: token });
+                await startApp();
+            }
+        }
+
+        document.getElementById('btn-login').onclick = () => {
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        };
+
+        document.getElementById('btn-logout').onclick = () => {
+            localStorage.removeItem('vault_token');
+            location.reload();
+        };
+
+        async function startApp() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-shell').classList.remove('hidden');
+            lucide.createIcons();
+            await loadDriveImages();
+        }
+
+        async function loadDriveImages() {
+            const gallery = document.getElementById('gallery');
+            const loader = document.getElementById('loader');
+            
+            gallery.innerHTML = '';
+            loader.classList.remove('hidden');
+
+            try {
+                // ড্রাইভ থেকে ছবি খোঁজার জন্য কোয়েরি
+                const response = await gapi.client.drive.files.list({
+                    q: "mimeType contains 'image/' and trashed = false",
+                    fields: 'files(id, name, thumbnailLink, webViewLink, webContentLink)',
+                    pageSize: 100 // ১০০টি ছবি লোড হবে
+                });
+
+                const files = response.result.files;
+                if (!files || files.length === 0) {
+                    gallery.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-dim);">No photos found in your Google Drive.</p>';
+                } else {
+                    files.forEach(file => {
+                        const card = document.createElement('div');
+                        card.className = 'media-card';
+                        // ড্রাইভের ছোট থাম্বনেইলকে বড় করে দেখানোর ট্রিক (=s500)
+                        const highResThumb = file.thumbnailLink ? file.thumbnailLink.replace('=s220', '=s500') : '';
+                        
+                        card.innerHTML = `
+                            <img src="${highResThumb}" alt="${file.name}" loading="lazy">
+                            <div class="media-info">${file.name}</div>
+                        `;
+                        card.onclick = () => window.open(file.webViewLink, '_blank');
+                        gallery.appendChild(card);
+                    });
+                }
+            } catch (err) {
+                console.error("API Error:", err);
+                if (err.status === 401) {
+                    localStorage.removeItem('vault_token');
+                    location.reload();
+                }
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
