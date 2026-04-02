@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyVault | Personal Cloud</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* আগের সব CSS এখানে থাকবে (সংক্ষেপের জন্য লিখলাম না, মূল কোড আগের মতোই) */
+        :root { --primary: #6366f1; --bg: #0f172a; --text: #f8fafc; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .card { background: rgba(255,255,255,0.03); backdrop-filter: blur(20px); padding: 40px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); text-align: center; width: 350px; }
+        .btn { background: white; color: black; border: none; padding: 12px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; justify-content: center; margin-top: 20px; transition: 0.3s; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .hidden { display: none !important; }
+        #gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 20px; width: 100%; height: 100vh; overflow-y: auto; background: var(--bg); position: fixed; inset: 0; z-index: 2000; }
+        .img-item { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN UI -->
+    <div id="login-container" class="card">
+        <h1 style="margin-bottom: 10px;">MyVault</h1>
+        <p style="color: #94a3b8; font-size: 0.9rem;">Sign in to view your Google Drive Photos</p>
+        <button id="auth-btn" class="btn">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18">
+            Sign in with Google
+        </button>
+        <p id="status-msg" style="margin-top: 15px; font-size: 0.8rem; color: #ef4444;"></p>
+    </div>
+
+    <!-- GALLERY UI -->
+    <div id="gallery" class="hidden">
+        <!-- Photos will load here -->
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+
+    <script>
+        const CLIENT_ID = '660229678534-o10ad3hp1tini145rb5q88ugp0v804ak.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyC3W_BY2TEvFTC6hcVVGpoAHaDkh7tAEX0';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/drive.readonly';
+
+        let tokenClient;
+        let gapiInited = false;
+
+        // ১. GAPI লোড করা
+        function startGapi() {
+            gapi.load('client', async () => {
+                try {
+                    await gapi.client.init({
+                        apiKey: API_KEY,
+                        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+                    });
+                    gapiInited = true;
+                    console.log("GAPI Initialized");
+                } catch (err) {
+                    console.error("GAPI Init Error:", err);
+                }
+            });
+        }
+
+        // ২. GIS (Google Identity Services) লোড করা
+        function startGis() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (resp) => {
+                    if (resp.error) {
+                        document.getElementById('status-msg').innerText = "Login Failed: " + resp.error;
+                        return;
+                    }
+                    console.log("Login Success!");
+                    loadImages();
+                },
+            });
+            console.log("GIS Initialized");
+        }
+
+        // ৩. বাটন ক্লিক হ্যান্ডলার
+        document.getElementById('auth-btn').onclick = () => {
+            if (!tokenClient) {
+                document.getElementById('status-msg').innerText = "Google library not loaded. Please refresh.";
+                return;
+            }
+            // টোকেন রিকোয়েস্ট করা (পপ-আপ আসবে)
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        };
+
+        // ৪. ড্রাইভ থেকে ছবি লোড করা
+        async function loadImages() {
+            document.getElementById('login-container').classList.add('hidden');
+            const gallery = document.getElementById('gallery');
+            gallery.classList.remove('hidden');
+            gallery.innerHTML = '<p style="padding:20px;">Loading your photos from Drive...</p>';
+
+            try {
+                const response = await gapi.client.drive.files.list({
+                    q: "mimeType contains 'image/'",
+                    fields: 'files(id, name, thumbnailLink, webViewLink)',
+                    pageSize: 100
+                });
+
+                const files = response.result.files;
+                if (!files || files.length === 0) {
+                    gallery.innerHTML = '<p style="padding:20px;">No photos found.</p>';
+                    return;
+                }
+
+                gallery.innerHTML = files.map(file => `
+                    <img class="img-item" src="${file.thumbnailLink.replace('=s220', '=s500')}" onclick="window.open('${file.webViewLink}')">
+                `).join('');
+
+            } catch (err) {
+                console.error("Drive API Error:", err);
+                gallery.innerHTML = '<p style="padding:20px; color:red;">Error loading photos. Check Console (F12).</p>';
+            }
+        }
+
+        // স্ক্রিপ্ট লোড হওয়ার জন্য অপেক্ষা
+        window.onload = () => {
+            startGapi();
+            startGis();
+        };
+    </script>
+</body>
+</html>
