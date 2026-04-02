@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyVault Pro | Multi-Cloud Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0b0f1a;
+            --sidebar: rgba(15, 23, 42, 0.8);
+            --card: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #f1f5f9;
+            --text-dim: #94a3b8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--text); overflow: hidden; height: 100vh; }
+        .hidden { display: none !important; }
+
+        /* --- UI LAYOUT --- */
+        #app-shell { display: grid; grid-template-columns: 260px 1fr; height: 100vh; }
+        
+        aside {
+            background: var(--sidebar); backdrop-filter: blur(15px);
+            border-right: 1px solid var(--border); padding: 2rem 1.5rem;
+            display: flex; flex-direction: column; z-index: 100;
+        }
+
+        .logo { font-size: 1.6rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 12px; margin-bottom: 2.5rem; }
+        
+        nav ul { list-style: none; }
+        nav li {
+            padding: 12px 16px; border-radius: 12px; margin-bottom: 8px; cursor: pointer;
+            display: flex; align-items: center; gap: 12px; color: var(--text-dim); transition: 0.2s;
+        }
+        nav li.active, nav li:hover { background: var(--card); color: white; border: 1px solid var(--border); }
+        nav li.active { color: var(--primary); border-color: var(--primary); }
+
+        main { display: flex; flex-direction: column; overflow: hidden; }
+        header {
+            padding: 1.2rem 2rem; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; background: rgba(11, 15, 26, 0.5); backdrop-filter: blur(10px);
+        }
+
+        .content-area { padding: 2rem; overflow-y: auto; flex-grow: 1; scroll-behavior: smooth; }
+
+        /* --- FILE & FOLDER CARDS --- */
+        .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.5rem; }
+        .file-card {
+            background: var(--card); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border);
+            text-align: center; transition: 0.3s; cursor: pointer; position: relative;
+        }
+        .file-card:hover { transform: translateY(-5px); border-color: var(--primary); background: rgba(99, 102, 241, 0.05); }
+        .file-card i { margin-bottom: 12px; color: var(--text-dim); }
+        .file-name { font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+        
+        /* Thumbnail for Images */
+        .thumb-img { width: 100%; height: 100px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
+
+        /* --- LOGIN SCREEN --- */
+        #auth-screen {
+            position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: #0b0f1a; z-index: 2000;
+        }
+        .login-card {
+            background: var(--card); backdrop-filter: blur(20px); padding: 3.5rem;
+            border-radius: 30px; border: 1px solid var(--border); text-align: center; width: 90%; max-width: 420px;
+        }
+        .btn-google {
+            background: white; color: black; border: none; padding: 14px 24px; border-radius: 12px;
+            font-weight: 600; display: flex; align-items: center; gap: 12px; width: 100%;
+            justify-content: center; cursor: pointer; transition: 0.3s; margin-top: 2rem;
+        }
+
+        .account-badge { font-size: 0.7rem; background: var(--primary); color: white; padding: 2px 8px; border-radius: 10px; margin-left: auto; }
+
+        @media (max-width: 768px) { #app-shell { grid-template-columns: 1fr; } aside { display: none; } }
+    </style>
+</head>
+<body>
+
+    <!-- AUTH SCREEN -->
+    <div id="auth-screen">
+        <div class="login-card">
+            <h1 style="font-weight: 800; letter-spacing: -1px;">MyVault <span style="color: var(--primary);">Pro</span></h1>
+            <p style="color: var(--text-dim); margin-top: 10px;">Login to access your multi-account files</p>
+            <button class="btn-google" onclick="handleAuthClick()">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18">
+                Sign in with Google
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app-shell" class="hidden">
+        <aside>
+            <div class="logo"><i data-lucide="layout-dashboard"></i> MyVault</div>
+            <nav>
+                <ul>
+                    <li class="active" onclick="showSection('drive')"><i data-lucide="folder-open"></i> All Drive Files</li>
+                    <li onclick="showSection('photos')"><i data-lucide="image"></i> Google Photos</li>
+                    <li onclick="showSection('notes')"><i data-lucide="file-text"></i> My Notes</li>
+                    <li onclick="showSection('settings')"><i data-lucide="settings"></i> Settings</li>
+                </ul>
+            </nav>
+            <div style="margin-top: auto;">
+                <button onclick="handleAuthClick()" style="width:100%; background:var(--card); border:1px solid var(--border); color:white; padding:10px; border-radius:10px; cursor:pointer; margin-bottom:10px; font-size:0.8rem;">
+                    + Add/Switch Account
+                </button>
+                <button onclick="logout()" style="width:100%; background:none; border:none; color:#ef4444; cursor:pointer; display:flex; gap:10px; align-items:center; padding:10px;">
+                    <i data-lucide="log-out" size="18"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <main>
+            <header>
+                <h2 id="section-title">All Drive Files</h2>
+                <div id="user-display" style="display:flex; align-items:center; gap:10px; color:var(--text-dim); font-size:0.8rem;">
+                    <i data-lucide="user" size="16"></i> <span id="active-user">Not Connected</span>
+                </div>
+            </header>
+
+            <div class="content-area" id="main-content">
+                <div class="file-grid" id="file-display">
+                    <!-- Files will load here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+
+    <script>
+        // আপনার নতুন Client ID
+        const CLIENT_ID = '660229678534-7fpjbdrinr2moi8m5fn90poot5livg95.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyC3W_BY2TEvFTC6hcVVGpoAHaDkh7tAEX0';
+        
+        // সব ফাইল দেখার জন্য স্কোপ আপডেট করা হয়েছে
+        const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/photoslibrary.readonly';
+
+        let tokenClient;
+        let accessToken = localStorage.getItem('vault_token');
+
+        function initApp() {
+            gapi.load('client', async () => {
+                await gapi.client.init({ apiKey: API_KEY, discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'] });
+                if (accessToken) {
+                    gapi.client.setToken({ access_token: accessToken });
+                    startSession();
+                }
+            });
+
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (resp) => {
+                    if (resp.access_token) {
+                        accessToken = resp.access_token;
+                        localStorage.setItem('vault_token', accessToken);
+                        startSession();
+                    }
+                },
+            });
+            lucide.createIcons();
+        }
+
+        function handleAuthClick() {
+            // পপ-আপে অ্যাকাউন্ট সিলেক্ট করার অপশন দিবে (Multiple Account Support)
+            tokenClient.requestAccessToken({ prompt: 'select_account' });
+        }
+
+        function startSession() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-shell').classList.remove('hidden');
+            showSection('drive');
+        }
+
+        async function showSection(section) {
+            const container = document.getElementById('file-display');
+            const title = document.getElementById('section-title');
+            container.innerHTML = '<p>Loading files...</p>';
+
+            if (section === 'drive') {
+                title.innerText = "All Drive Files";
+                await loadAllDriveFiles();
+            } else if (section === 'photos') {
+                title.innerText = "Google Photos Library";
+                await loadGooglePhotos();
+            }
+            lucide.createIcons();
+        }
+
+        // --- DRIVE: ALL FILES (Images, PDFs, Docs, etc.) ---
+        async function loadAllDriveFiles() {
+            const container = document.getElementById('file-display');
+            try {
+                const res = await gapi.client.drive.files.list({
+                    fields: 'files(id, name, mimeType, thumbnailLink, webViewLink, iconLink, size)',
+                    pageSize: 100
+                });
+                const files = res.result.files;
+                
+                if (!files || files.length === 0) {
+                    container.innerHTML = "No files found in your drive.";
+                    return;
+                }
+
+                container.innerHTML = files.map(file => {
+                    let icon = 'file';
+                    if (file.mimeType.includes('folder')) icon = 'folder';
+                    if (file.mimeType.includes('pdf')) icon = 'file-text';
+                    if (file.mimeType.includes('video')) icon = 'play-circle';
+                    
+                    const isImg = file.mimeType.includes('image/');
+
+                    return `
+                        <div class="file-card" onclick="window.open('${file.webViewLink}')">
+                            ${isImg ? `<img src="${file.thumbnailLink}" class="thumb-img">` : `<i data-lucide="${icon}" size="40"></i>`}
+                            <div class="file-name">${file.name}</div>
+                            <div style="font-size:0.6rem; color:var(--text-dim); margin-top:5px;">${(file.size / 1024 / 1024).toFixed(2) || 0} MB</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = "Error loading drive files. Please re-login.";
+            }
+        }
+
+        // --- GOOGLE PHOTOS ---
+        async function loadGooglePhotos() {
+            const container = document.getElementById('file-display');
+            try {
+                const res = await fetch('https://photoslibrary.googleapis.com/v1/mediaItems', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                const data = await res.json();
+                if (data.mediaItems) {
+                    container.innerHTML = data.mediaItems.map(item => `
+                        <div class="file-card" onclick="window.open('${item.productUrl}')">
+                            <img src="${item.baseUrl}" class="thumb-img">
+                            <div class="file-name">${item.filename}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = "No photos found in Google Photos Library.";
+                }
+            } catch (e) {
+                container.innerHTML = "Enable Google Photos API in Cloud Console first.";
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('vault_token');
+            location.reload();
+        }
+
+        window.onload = initApp;
+    </script>
+</body>
+</html>
